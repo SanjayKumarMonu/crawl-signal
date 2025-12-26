@@ -1,4 +1,4 @@
-// File: Sources/CrawlSignal/main.swift
+// File: Sources/CrawlSignal/EntryPoint.swift
 import Foundation
 import MCP
 
@@ -16,6 +16,7 @@ struct CrawlSignalMain {
         let indexNowService = IndexNowService(logger: logger)
         let perplexityService = PerplexityService(logger: logger)
 
+        // Setup dashboard (unchanged)
         let dashboardTools = [
             DashboardTool(
                 title: "Submit to IndexNow",
@@ -120,22 +121,34 @@ struct CrawlSignalMain {
             )
         ]
 
-        server.registerListToolsHandler { _ in tools }
+        // FIXED: Use withMethodHandler for ListTools
+        await server.withMethodHandler(ListTools.self) { _ in
+            return ListTools.Result(tools: tools)
+        }
 
-        server.registerCallToolHandler { params in
-            let args = params.arguments as? [String: Any] ?? [:]
-
-            switch params.name {
+        // FIXED: Use withMethodHandler for CallTool
+        await server.withMethodHandler(CallTool.self) { request in
+            // request.arguments is [String: Value]?, so we rely on ValueHelpers.swift to extract data
+            let args = request.arguments ?? [:]
+            
+            switch request.name {
             case "submit_url_indexnow":
-                let urlValues: [String] =
-                    (args["urls"] as? [String])
-                    ?? (args["urls"] as? String).map { [$0] }
-                    ?? []
-                let host = args["host"] as? String
-                let apiKey = args["apiKey"] as? String
-                let keyLocation = args["keyLocation"] as? String
+                // Extract using helper properties from ValueHelpers.swift
+                let urlValues: [String] = args["urls"]?.arrayValue?.compactMap { $0.stringValue } ?? []
+                // Fallback for single string input if array extraction failed but string exists
+                if urlValues.isEmpty, let single = args["urls"]?.stringValue {
+                     // logic to handle single string if necessary, though schema defines array
+                }
+                
+                let host = args["host"]?.stringValue
+                let apiKey = args["apiKey"]?.stringValue
+                let keyLocation = args["keyLocation"]?.stringValue
+                
                 do {
-                    let result = try await indexNowService.submit(urlStrings: urlValues, host: host, apiKey: apiKey, keyLocation: keyLocation)
+                    // Ensure urlValues is not empty if required
+                    let urlsToSubmit = urlValues.isEmpty && args["urls"]?.stringValue != nil ? [args["urls"]!.stringValue!] : urlValues
+                    
+                    let result = try await indexNowService.submit(urlStrings: urlsToSubmit, host: host, apiKey: apiKey, keyLocation: keyLocation)
                     return CallTool.Result(content: [.text(result)], isError: false)
                 } catch {
                     await logger.log(level: "error", "IndexNow tool error: \(error)")
@@ -143,9 +156,10 @@ struct CrawlSignalMain {
                 }
 
             case "check_perplexity_status":
-                let url = args["url"] as? String ?? ""
-                let apiKey = args["apiKey"] as? String
-                let model = args["model"] as? String
+                let url = args["url"]?.stringValue ?? ""
+                let apiKey = args["apiKey"]?.stringValue
+                let model = args["model"]?.stringValue
+                
                 do {
                     let summary = try await perplexityService.check(urlString: url, apiKey: apiKey, model: model)
                     return CallTool.Result(content: [.text(summary)], isError: false)
@@ -155,13 +169,13 @@ struct CrawlSignalMain {
                 }
 
             case "audit_page_for_geo":
-                let url = args["url"] as? String ?? ""
-                let check = (args["checkRobotsTxt"] as? Bool) ?? true
+                let url = args["url"]?.stringValue ?? ""
+                let check = args["checkRobotsTxt"]?.boolValue ?? true
                 let report = await auditorService.audit(urlString: url, checkRobotsTxt: check)
                 return CallTool.Result(content: [.text(report)], isError: false)
 
             default:
-                return CallTool.Result(content: [.text("Unknown tool: \(params.name)")], isError: true)
+                return CallTool.Result(content: [.text("Unknown tool: \(request.name)")], isError: true)
             }
         }
 
