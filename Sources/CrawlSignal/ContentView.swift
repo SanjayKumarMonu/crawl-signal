@@ -11,7 +11,7 @@ struct ContentView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selectedTab) {
-                Label("SEO Audit", systemImage: "checkmark.shield")
+                Label("Audit & SEO", systemImage: "checkmark.shield")
                     .tag(Tab.audit)
                 Label("IndexNow", systemImage: "paperplane")
                     .tag(Tab.indexnow)
@@ -38,7 +38,7 @@ struct AuditView: View {
     @State private var report = ""
     @State private var isAnalyzing = false
     
-    // FIX 1: Add Focus State to control keyboard focus
+    // FIX: Add Focus State to control keyboard focus
     @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
@@ -46,13 +46,9 @@ struct AuditView: View {
             HeaderView(title: "Page Audit", subtitle: "Analyze if AI bots can read your content.")
             
             HStack {
-                // FIX 2: Custom styling to ensure the field is clickable and visible
-                TextField("https://example.com", text: $urlString)
-                    .textFieldStyle(.plain)
-                    .padding(10)
-                    .background(Color(nsColor: .textBackgroundColor))
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.gray.opacity(0.3), lineWidth: 1))
-                    .cornerRadius(6)
+                // FIX: Use standard .roundedBorder for maximum compatibility
+                TextField("Website URL", text: $urlString)
+                    .textFieldStyle(.roundedBorder)
                     .focused($isTextFieldFocused) // Bind focus here
                     .onSubmit { runAudit() }      // Allow pressing Enter to submit
                 
@@ -80,10 +76,10 @@ struct AuditView: View {
                 .cornerRadius(8)
                 .padding()
         }
-        // FIX 3: Force focus when the view appears (with a slight delay for safety)
+        // FIX: Force focus when the view appears (with a slight delay to override sidebar)
         .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isTextFieldFocused = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.isTextFieldFocused = true
             }
         }
     }
