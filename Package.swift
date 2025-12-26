@@ -13,13 +13,11 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", branch: "main")
     ],
     targets: [
         .executableTarget(
             name: "CrawlSignal",
             dependencies: [
-                .product(name: "MCP", package: "swift-sdk")
             ]
         ),
         .testTarget(
