@@ -1,137 +1,280 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var selectedTab: String? = "audit"
-
+    // We use a sidebar navigation style
+    @State private var selectedTab: Tab? = .audit
+    
+    enum Tab {
+        case audit, indexnow, perplexity
+    }
+    
     var body: some View {
         NavigationSplitView {
             List(selection: $selectedTab) {
-                Label("Audit & SEO", systemImage: "checkmark.shield").tag("audit")
-                Label("IndexNow Submitter", systemImage: "paperplane").tag("indexnow")
-                Label("Perplexity Check", systemImage: "magnifyingglass").tag("perplexity")
+                Label("SEO Audit", systemImage: "checkmark.shield")
+                    .tag(Tab.audit)
+                Label("IndexNow", systemImage: "paperplane")
+                    .tag(Tab.indexnow)
+                Label("Perplexity Check", systemImage: "magnifyingglass")
+                    .tag(Tab.perplexity)
             }
+            .navigationSplitViewColumnWidth(min: 200, ideal: 220)
             .listStyle(SidebarListStyle())
-            .navigationTitle("Crawl Signal")
         } detail: {
-            if let tab = selectedTab {
-                switch tab {
-                case "audit": AuditView()
-                case "indexnow": IndexNowView()
-                case "perplexity": PerplexityView()
-                default: Text("Select a tool")
-                }
+            switch selectedTab {
+            case .audit: AuditView()
+            case .indexnow: IndexNowView()
+            case .perplexity: PerplexityView()
+            case .none: Text("Select a tool")
             }
         }
         .frame(minWidth: 900, minHeight: 600)
     }
 }
 
-// MARK: - Audit View
+// MARK: - 1. Audit View
 struct AuditView: View {
     @State private var urlString = "https://"
     @State private var report = ""
     @State private var isAnalyzing = false
     
+    // FIX 1: Add Focus State to control keyboard focus
+    @FocusState private var isTextFieldFocused: Bool
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("AI Readiness Audit").font(.headline)
+        VStack(alignment: .leading, spacing: 20) {
+            HeaderView(title: "Page Audit", subtitle: "Analyze if AI bots can read your content.")
+            
             HStack {
-                TextField("Website URL", text: $urlString).textFieldStyle(.roundedBorder)
-                Button("Analyze") {
+                // FIX 2: Custom styling to ensure the field is clickable and visible
+                TextField("https://example.com", text: $urlString)
+                    .textFieldStyle(.plain)
+                    .padding(10)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.gray.opacity(0.3), lineWidth: 1))
+                    .cornerRadius(6)
+                    .focused($isTextFieldFocused) // Bind focus here
+                    .onSubmit { runAudit() }      // Allow pressing Enter to submit
+                
+                Button("Run Audit") {
                     runAudit()
                 }
-                .disabled(isAnalyzing)
+                .buttonStyle(.borderedProminent)
+                .disabled(urlString.isEmpty || isAnalyzing)
             }
-            if isAnalyzing { ProgressView() }
+            .padding(.horizontal)
+            
+            if isAnalyzing {
+                HStack {
+                    ProgressView().scaleEffect(0.5)
+                    Text("Fetching page and checking robots.txt...")
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal)
+            }
+            
             TextEditor(text: .constant(report))
                 .font(.system(.body, design: .monospaced))
-                .border(Color.gray.opacity(0.2))
+                .scrollContentBackground(.hidden)
+                .background(Color(nsColor: .textBackgroundColor))
+                .cornerRadius(8)
+                .padding()
         }
-        .padding()
+        // FIX 3: Force focus when the view appears (with a slight delay for safety)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isTextFieldFocused = true
+            }
+        }
     }
-
+    
     func runAudit() {
+        guard !urlString.isEmpty else { return }
         isAnalyzing = true
+        report = ""
+        
         Task {
             let logger = Logger.shared
-            let robots = RobotsTxtService(logger: logger)
-            let auditor = AuditorService(logger: logger, robotsService: robots)
+            let robotsService = RobotsTxtService(logger: logger)
+            let auditor = AuditorService(logger: logger, robotsService: robotsService)
+            
             let result = await auditor.audit(urlString: urlString, checkRobotsTxt: true)
+            
             DispatchQueue.main.async {
                 self.report = result
                 self.isAnalyzing = false
+                self.isTextFieldFocused = true // Refocus after running
             }
         }
     }
 }
 
-// MARK: - IndexNow View
+// MARK: - 2. IndexNow View
 struct IndexNowView: View {
-    @AppStorage("indexNowKey") private var apiKey = ""
+    @AppStorage("IndexNowKey") private var apiKey = ""
     @State private var urlsText = ""
     @State private var host = ""
     @State private var log = ""
+    @State private var isSubmitting = false
     
     var body: some View {
-        Form {
-            Section("Settings") {
-                TextField("API Key", text: $apiKey)
-                TextField("Host (e.g. example.com)", text: $host)
+        VStack(alignment: .leading, spacing: 20) {
+            HeaderView(title: "IndexNow Submitter", subtitle: "Instantly notify Bing & Yandex about content changes.")
+            
+            Form {
+                Section("Configuration") {
+                    TextField("API Key", text: $apiKey)
+                    TextField("Host (e.g. example.com)", text: $host)
+                }
+                
+                Section("URLs (One per line)") {
+                    TextEditor(text: $urlsText)
+                        .frame(height: 100)
+                        .font(.body)
+                }
             }
-            Section("URLs to Submit") {
-                TextEditor(text: $urlsText).frame(height: 100)
-                Button("Submit") { submit() }
+            .formStyle(.grouped)
+            .padding(.horizontal)
+            
+            HStack {
+                Button("Submit URLs") {
+                    submit()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isSubmitting || apiKey.isEmpty || urlsText.isEmpty)
+                
+                if isSubmitting { ProgressView().scaleEffect(0.8) }
             }
-            if !log.isEmpty { Text(log).foregroundStyle(.secondary) }
+            .padding(.horizontal)
+            
+            if !log.isEmpty {
+                Text(log)
+                    .foregroundStyle(.secondary)
+                    .padding()
+            }
+            
+            Spacer()
         }
-        .padding()
     }
-
+    
     func submit() {
         let urls = urlsText.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        guard !urls.isEmpty else { return }
+        
+        isSubmitting = true
+        log = "Submitting..."
+        
         Task {
             let service = IndexNowService(logger: Logger.shared)
             do {
-                let res = try await service.submit(urlStrings: urls, host: host.isEmpty ? nil : host, apiKey: apiKey, keyLocation: nil)
-                DispatchQueue.main.async { log = "Success: \(res)" }
+                let result = try await service.submit(
+                    urlStrings: urls,
+                    host: host.isEmpty ? nil : host,
+                    apiKey: apiKey,
+                    keyLocation: nil
+                )
+                DispatchQueue.main.async {
+                    self.log = "Success: \(result)"
+                    self.isSubmitting = false
+                }
             } catch {
-                DispatchQueue.main.async { log = "Error: \(error.localizedDescription)" }
+                DispatchQueue.main.async {
+                    self.log = "Error: \(error.localizedDescription)"
+                    self.isSubmitting = false
+                }
             }
         }
     }
 }
 
-// MARK: - Perplexity View
+// MARK: - 3. Perplexity View
 struct PerplexityView: View {
-    @AppStorage("perplexityKey") private var apiKey = ""
-    @State private var url = ""
+    @AppStorage("PerplexityKey") private var apiKey = ""
+    @State private var urlString = ""
     @State private var output = ""
-    @State private var loading = false
+    @State private var isLoading = false
     
     var body: some View {
-        VStack(alignment: .leading) {
-            Text("Perplexity Visibility").font(.headline)
-            TextField("API Key", text: $apiKey).textFieldStyle(.roundedBorder)
-            HStack {
-                TextField("URL", text: $url).textFieldStyle(.roundedBorder)
-                Button("Check") { check() }.disabled(loading)
+        VStack(alignment: .leading, spacing: 20) {
+            HeaderView(title: "Perplexity Check", subtitle: "See how Perplexity's 'sonar' model views your page.")
+            
+            VStack(alignment: .leading) {
+                Text("API Key")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                SecureField("pplx-...", text: $apiKey)
+                    .textFieldStyle(.roundedBorder)
             }
-            if loading { ProgressView() }
-            ScrollView { Text(output).padding() }
+            .padding(.horizontal)
+            
+            HStack {
+                TextField("URL to check", text: $urlString)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { check() }
+                
+                Button("Check Reachability") {
+                    check()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isLoading || apiKey.isEmpty)
+            }
+            .padding(.horizontal)
+            
+            if isLoading {
+                ProgressView("Asking Perplexity...")
+                    .padding()
+            }
+            
+            ScrollView {
+                Text(output)
+                    .padding()
+                    .textSelection(.enabled)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(nsColor: .textBackgroundColor))
+            .cornerRadius(8)
+            .padding()
         }
-        .padding()
     }
     
     func check() {
-        loading = true
+        guard !urlString.isEmpty else { return }
+        isLoading = true
+        output = ""
+        
         Task {
             let service = PerplexityService(logger: Logger.shared)
             do {
-                let res = try await service.check(urlString: url, apiKey: apiKey, model: "sonar-pro")
-                DispatchQueue.main.async { output = res; loading = false }
+                let result = try await service.check(urlString: urlString, apiKey: apiKey, model: "sonar-pro")
+                DispatchQueue.main.async {
+                    self.output = result
+                    self.isLoading = false
+                }
             } catch {
-                DispatchQueue.main.async { output = "Error: \(error.localizedDescription)"; loading = false }
+                DispatchQueue.main.async {
+                    self.output = "Error: \(error.localizedDescription)"
+                    self.isLoading = false
+                }
             }
         }
     }
+}
+
+// Helper for consistency
+struct HeaderView: View {
+    let title: String
+    let subtitle: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title).font(.largeTitle).bold()
+            Text(subtitle).font(.title3).foregroundStyle(.secondary)
+            Divider()
+        }
+        .padding()
+    }
+}
+
+#Preview {
+    ContentView()
 }
