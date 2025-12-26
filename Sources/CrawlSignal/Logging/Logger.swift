@@ -1,21 +1,21 @@
 // File: Sources/CrawlSignal/Logging/Logger.swift
 import Foundation
 
-public actor Logger {
-    public static let shared = Logger()
+actor Logger {
+    static let shared = Logger()
     private let fileURL: URL
     private let dateFormatter: DateFormatter
 
-    public nonisolated var logFilePath: String { fileURL.path }
+    nonisolated var logFilePath: String { fileURL.path }
 
-    public init() {
+    init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
         self.fileURL = home.appendingPathComponent("crawlsignal.log")
         self.dateFormatter = DateFormatter()
         self.dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
     }
 
-    public func log(level: String, _ message: String) {
+    func log(level: String, _ message: String) {
         let timestamp = dateFormatter.string(from: Date())
         let line = "[\(timestamp)] [\(level.uppercased())] \(message)\n"
         write(line)

@@ -1,4 +1,4 @@
-// File: Sources/CrawlSignalCore/Utilities/ValueHelpers.swift
+// File: Sources/CrawlSignal/Utilities/ValueHelpers.swift
 import MCP
 
 extension Value {
