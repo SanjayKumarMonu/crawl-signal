@@ -22,7 +22,8 @@ extension Value {
 
     var boolValue: Bool? {
         switch self {
-        case .boolean(let value):
+        // FIXED: Changed .boolean to .bool
+        case .bool(let value):
             return value
         default:
             return nil
