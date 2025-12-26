@@ -16,6 +16,40 @@ struct CrawlSignalMain {
         let indexNowService = IndexNowService(logger: logger)
         let perplexityService = PerplexityService(logger: logger)
 
+        let dashboardTools = [
+            DashboardTool(
+                title: "Submit to IndexNow",
+                description: "Instantly nudge Bing and participating engines with fresh URLs. Retries automatically on rate limits.",
+                callToAction: "Use tool: submit_url_indexnow",
+                accent: "#60a5fa"
+            ),
+            DashboardTool(
+                title: "Verify Perplexity reach",
+                description: "Request a live summary from Perplexity to confirm accessibility, robots friendliness, and paywall signals.",
+                callToAction: "Use tool: check_perplexity_status",
+                accent: "#f472b6"
+            ),
+            DashboardTool(
+                title: "Audit GEO visibility",
+                description: "Analyze meta robots, X-Robots-Tag, canonical signals, JSON-LD, and AI crawler access in one report.",
+                callToAction: "Use tool: audit_page_for_geo",
+                accent: "#34d399"
+            )
+        ]
+
+        let dashboardStatus = DashboardStatus(
+            indexNowKeyPresent: (ProcessInfo.processInfo.environment["INDEXNOW_KEY"]?.isEmpty == false),
+            perplexityKeyPresent: (ProcessInfo.processInfo.environment["PERPLEXITY_API_KEY"]?.isEmpty == false),
+            logPath: logger.logFilePath,
+            dashboardPath: UIBuilder.defaultDashboardURL().path
+        )
+
+        do {
+            try UIBuilder.writeDashboard(to: UIBuilder.defaultDashboardURL(), tools: dashboardTools, status: dashboardStatus)
+        } catch {
+            await logger.log(level: "error", "Failed to write dashboard: \(error)")
+        }
+
         let tools: [Tool] = [
             Tool(
                 name: "submit_url_indexnow",

@@ -6,6 +6,8 @@ actor Logger {
     private let fileURL: URL
     private let dateFormatter: DateFormatter
 
+    nonisolated var logFilePath: String { fileURL.path }
+
     init() {
         let home = FileManager.default.homeDirectoryForCurrentUser
         self.fileURL = home.appendingPathComponent("crawlsignal.log")

@@ -47,6 +47,7 @@ Create or extend your `claude_desktop_config.json`:
 - IndexNow submissions POST to `https://api.indexnow.org/indexnow` and automatically retry on HTTP 429 with exponential backoff.
 - Perplexity checks call `https://api.perplexity.ai/chat/completions` with a diagnostic prompt to force URL access.
 - Audits fetch the page, analyze meta robots, X-Robots-Tag, canonical, JSON-LD presence, content signals, and optionally evaluate `robots.txt` for common AI bots.
+- On startup the server writes a curated HTML dashboard to `~/crawlsignal_dashboard.html` highlighting tool purpose, environment health, and file locations.
 
 ## Security notes
 - Keep API keys secret. Avoid embedding keys in source control; prefer environment variables.
