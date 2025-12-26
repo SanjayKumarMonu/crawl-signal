@@ -31,58 +31,26 @@ struct AuditView: View {
     @State private var urlString = "https://"
     @State private var report = ""
     @State private var isAnalyzing = false
-    @FocusState private var isTextFieldFocused: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("AI Readiness Audit").font(.headline)
             HStack {
-                TextField("Website URL", text: $urlString)
-                    .textFieldStyle(.plain)
-                    .padding(8)
-                    .background(Color(nsColor: .controlBackgroundColor))
-                    .cornerRadius(6)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                    )
-                    .foregroundStyle(.primary)
-                    .focused($isTextFieldFocused)
-                    .onSubmit { runAudit() }
-                    Button("Analyze") {
-                        runAudit()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isAnalyzing || urlString.isEmpty)
-            }
-            if isAnalyzing {
-                HStack {
-                    ProgressView().scaleEffect(0.5)
-                    Text("Analyzing signals...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                TextField("Website URL", text: $urlString).textFieldStyle(.roundedBorder)
+                Button("Analyze") {
+                    runAudit()
                 }
+                .disabled(isAnalyzing)
             }
+            if isAnalyzing { ProgressView() }
             TextEditor(text: .constant(report))
                 .font(.system(.body, design: .monospaced))
-                .scrollContentBackground(.hidden)
-                .background(Color(nsColor: .textBackgroundColor))
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
-                )
+                .border(Color.gray.opacity(0.2))
         }
         .padding()
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                isTextFieldFocused = true
-            }
-        }
     }
 
     func runAudit() {
-        guard !urlString.isEmpty else { return }
         isAnalyzing = true
         Task {
             let logger = Logger.shared
@@ -92,7 +60,6 @@ struct AuditView: View {
             DispatchQueue.main.async {
                 self.report = result
                 self.isAnalyzing = false
-                self.isTextFieldFocused = true
             }
         }
     }
