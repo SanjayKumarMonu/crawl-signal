@@ -1,4 +1,4 @@
-// File: Sources/CrawlSignalCore/Utilities/ValueHelpers.swift
+// File: Sources/CrawlSignal/Utilities/ValueHelpers.swift
 import MCP
 
 extension Value {
@@ -22,7 +22,7 @@ extension Value {
 
     var boolValue: Bool? {
         switch self {
-        case .bool(let value):
+        case .boolean(let value):
             return value
         default:
             return nil

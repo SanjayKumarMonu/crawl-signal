@@ -1,11 +1,11 @@
-// File: Sources/CrawlSignalCore/Services/IndexNowService.swift
+// File: Sources/CrawlSignal/Services/IndexNowService.swift
 import Foundation
 
-public actor IndexNowService {
+actor IndexNowService {
     private let session: URLSession
     private let logger: Logger
 
-    public init(logger: Logger) {
+    init(logger: Logger) {
         self.logger = logger
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 30
@@ -13,7 +13,7 @@ public actor IndexNowService {
         self.session = URLSession(configuration: config)
     }
 
-    public func submit(urlStrings: [String], host: String?, apiKey: String?, keyLocation: String?) async throws -> String {
+    func submit(urlStrings: [String], host: String?, apiKey: String?, keyLocation: String?) async throws -> String {
         let urls = URLValidation.normalizeURLStrings(urlStrings)
         guard !urls.isEmpty else { throw CrawlSignalError.invalidURL("No valid URLs provided") }
 

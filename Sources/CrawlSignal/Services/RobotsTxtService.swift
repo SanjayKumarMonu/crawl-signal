@@ -1,43 +1,29 @@
-// File: Sources/CrawlSignalCore/Services/RobotsTxtService.swift
+// File: Sources/CrawlSignal/Services/RobotsTxtService.swift
 import Foundation
 
-public struct RobotsRule {
-    public enum Directive {
+struct RobotsRule {
+    enum Directive {
         case allow
         case disallow
     }
-    public let directive: Directive
-    public let path: String
-
-    public init(directive: Directive, path: String) {
-        self.directive = directive
-        self.path = path
-    }
+    let directive: Directive
+    let path: String
 }
 
-public struct RobotsGroup {
-    public var agents: [String]
-    public var rules: [RobotsRule]
-
-    public init(agents: [String], rules: [RobotsRule]) {
-        self.agents = agents
-        self.rules = rules
-    }
+struct RobotsGroup {
+    var agents: [String]
+    var rules: [RobotsRule]
 }
 
-public struct RobotsTxt {
-    public let groups: [RobotsGroup]
-
-    public init(groups: [RobotsGroup]) {
-        self.groups = groups
-    }
+struct RobotsTxt {
+    let groups: [RobotsGroup]
 }
 
-public actor RobotsTxtService {
+actor RobotsTxtService {
     private let session: URLSession
     private let logger: Logger
 
-    public init(logger: Logger) {
+    init(logger: Logger) {
         self.logger = logger
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 30
@@ -45,7 +31,7 @@ public actor RobotsTxtService {
         self.session = URLSession(configuration: config)
     }
 
-    public func fetch(host: String) async throws -> String {
+    func fetch(host: String) async throws -> String {
         guard let url = URL(string: "https://\(host)/robots.txt") else {
             throw CrawlSignalError.invalidURL("https://\(host)/robots.txt")
         }
@@ -62,7 +48,7 @@ public actor RobotsTxtService {
         return body
     }
 
-    public nonisolated func parse(content: String) -> RobotsTxt {
+    nonisolated func parse(content: String) -> RobotsTxt {
         var groups: [RobotsGroup] = []
         var currentAgents: [String] = []
         var currentRules: [RobotsRule] = []
@@ -104,7 +90,7 @@ public actor RobotsTxtService {
         return RobotsTxt(groups: groups)
     }
 
-    public nonisolated func evaluateAccess(for agent: String, path: String, robots: RobotsTxt) -> BotAccess {
+    nonisolated func evaluateAccess(for agent: String, path: String, robots: RobotsTxt) -> BotAccess {
         let lowerAgent = agent.lowercased()
         let group = robots.groups.first { $0.agents.contains(lowerAgent) } ?? robots.groups.first { $0.agents.contains("*") }
         guard let selected = group else { return .unknown }
@@ -135,7 +121,7 @@ public actor RobotsTxtService {
         }
     }
 
-    public func summarizeAccess(for host: String) async -> [BotRobotsStatus] {
+    func summarizeAccess(for host: String) async -> [BotRobotsStatus] {
         let bots = ["ClaudeBot", "GPTBot", "PerplexityBot", "Bingbot"]
         do {
             let content = try await fetch(host: host)

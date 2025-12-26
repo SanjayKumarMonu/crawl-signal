@@ -1,14 +1,14 @@
 // File: Sources/CrawlSignal/Models/CrawlSignalError.swift
 import Foundation
 
-public enum CrawlSignalError: Error, LocalizedError {
+enum CrawlSignalError: Error, LocalizedError {
     case invalidURL(String)
     case missingAPIKey(String)
     case httpError(status: Int, body: String)
     case decodingError(String)
     case unexpected(String)
 
-    public var errorDescription: String? {
+    var errorDescription: String? {
         switch self {
         case .invalidURL(let value):
             return "Invalid URL: \(value)"
