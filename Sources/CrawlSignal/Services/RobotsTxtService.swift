@@ -1,7 +1,7 @@
 // File: Sources/CrawlSignal/Services/RobotsTxtService.swift
 import Foundation
 
-private struct RobotsRule {
+struct RobotsRule {
     enum Directive {
         case allow
         case disallow
@@ -10,7 +10,7 @@ private struct RobotsRule {
     let path: String
 }
 
-private struct RobotsGroup {
+struct RobotsGroup {
     var agents: [String]
     var rules: [RobotsRule]
 }

@@ -9,7 +9,7 @@ struct CrawlSignalMain {
         await logger.log(level: "info", "Starting Crawl Signal server")
 
         let transport = StdioTransport()
-        let server = Server(name: "Crawl Signal", version: "0.1.0", transport: transport)
+        let server = Server(name: "Crawl Signal", version: "0.1.0")
 
         let robotsService = RobotsTxtService(logger: logger)
         let auditorService = AuditorService(logger: logger, robotsService: robotsService)
@@ -120,25 +120,20 @@ struct CrawlSignalMain {
             )
         ]
 
-        server.registerListToolsHandler { _ in
-            return ListToolsResult(tools: tools)
-        }
+        server.registerListToolsHandler { _ in tools }
 
         server.registerCallToolHandler { params in
+            let args = params.arguments as? [String: Any] ?? [:]
+
             switch params.name {
             case "submit_url_indexnow":
-                let args = params.arguments ?? [:]
-                let urlValues: [String]
-                if let urlsArray = args["urls"]?.arrayValue {
-                    urlValues = urlsArray.compactMap { $0.stringValue }
-                } else if let single = args["urls"]?.stringValue {
-                    urlValues = [single]
-                } else {
-                    urlValues = []
-                }
-                let host = args["host"]?.stringValue
-                let apiKey = args["apiKey"]?.stringValue
-                let keyLocation = args["keyLocation"]?.stringValue
+                let urlValues: [String] =
+                    (args["urls"] as? [String])
+                    ?? (args["urls"] as? String).map { [$0] }
+                    ?? []
+                let host = args["host"] as? String
+                let apiKey = args["apiKey"] as? String
+                let keyLocation = args["keyLocation"] as? String
                 do {
                     let result = try await indexNowService.submit(urlStrings: urlValues, host: host, apiKey: apiKey, keyLocation: keyLocation)
                     return CallTool.Result(content: [.text(result)], isError: false)
@@ -148,10 +143,9 @@ struct CrawlSignalMain {
                 }
 
             case "check_perplexity_status":
-                let args = params.arguments ?? [:]
-                let url = args["url"]?.stringValue ?? ""
-                let apiKey = args["apiKey"]?.stringValue
-                let model = args["model"]?.stringValue
+                let url = args["url"] as? String ?? ""
+                let apiKey = args["apiKey"] as? String
+                let model = args["model"] as? String
                 do {
                     let summary = try await perplexityService.check(urlString: url, apiKey: apiKey, model: model)
                     return CallTool.Result(content: [.text(summary)], isError: false)
@@ -161,9 +155,8 @@ struct CrawlSignalMain {
                 }
 
             case "audit_page_for_geo":
-                let args = params.arguments ?? [:]
-                let url = args["url"]?.stringValue ?? ""
-                let check = args["checkRobotsTxt"]?.boolValue ?? true
+                let url = args["url"] as? String ?? ""
+                let check = (args["checkRobotsTxt"] as? Bool) ?? true
                 let report = await auditorService.audit(urlString: url, checkRobotsTxt: check)
                 return CallTool.Result(content: [.text(report)], isError: false)
 
@@ -172,6 +165,6 @@ struct CrawlSignalMain {
             }
         }
 
-        try await server.start()
+        try await server.start(transport: transport)
     }
 }
